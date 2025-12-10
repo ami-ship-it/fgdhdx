@@ -1,0 +1,1765 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>macOS Desktop — Amina Murtazova</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Sora:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    /* === Анимированный фон macOS (облака, волны, градиенты) === */    
+    body::before {
+  content: '';
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: 
+    url(https://uploads.onecompiler.io/444n3vtba/445wktquk/Untitled_Artwork%207.jpg) center/cover no-repeat,
+    rgba(255, 255, 255, 0.65);
+  z-index: -3;
+  pointer-events: none;
+}
+
+    /* === Общие стили === */
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+      user-select: none;
+    }
+
+    body {
+      font-family: 'Sora', -apple-system, BlinkMacSystemFont, sans-serif;
+      min-height: 100vh;
+      overflow: hidden;
+      position: relative;
+      color: #333;
+    }
+
+    /* === macOS Notes (CV) === */
+    .note-card {
+      position: absolute;
+      border-radius: 12px;
+      overflow: hidden;
+      box-shadow: 0 6px 20px rgba(0,0,0,0.08);
+      z-index: 5;
+      background: white;
+    }
+
+    .note-header {
+      height: 28px;
+      background: rgba(255,255,255,0.7);
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      display: flex;
+      align-items: center;
+      padding: 0 10px;
+      border-bottom: 1px solid rgba(0,0,0,0.05);
+      cursor: move;
+    }
+
+    .window-controls {
+      display: flex;
+      gap: 8px;
+    }
+
+    .dot {
+      width: 12px;
+      height: 12px;
+      border-radius: 50%;
+    }
+    .dot.close { background: #ff5f57; }
+    .dot.min   { background: #ffbd2e; }
+    .dot.max   { background: #28c940; }
+
+    .note-content {
+      padding: 24px;
+      background: white;
+      color: #1d1d1f;
+    }
+
+    .note-content h2 {
+      font-weight: 600;
+      font-size: 1.25rem;
+      margin: 0 0 18px 0;
+    }
+
+    .note-content p,
+    .note-content li {
+      font-size: 14.5px;
+      line-height: 1.6;
+    }
+
+    /* === Папки на рабочем столе === */
+    .desktop {
+      position: relative;
+      width: 100%;
+      height: 100vh;
+      padding: 20px;
+    }
+
+    .folder {
+      position: absolute;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      width: 100px;
+      gap: 8px;
+      cursor: grab;
+      z-index: 6;
+      transition: transform 0.2s;
+    }
+
+    .folder.dragging {
+      opacity: 0.8;
+      z-index: 99;
+    }
+
+    .folder-icon {
+      width: 80px;
+      height: 60px;
+      background: #0000ff;
+      border-radius: 6px 6px 4px 4px;
+      position: relative;
+      box-shadow: 0 4px 8px rgba(0, 0, 100, 0.2);
+    }
+
+    .folder-icon::before {
+      content: '';
+      position: absolute;
+      top: -8px;
+      left: 12px;
+      width: 56px;
+      height: 16px;
+      background: #0000ff;
+      border-radius: 4px 4px 0 0;
+    }
+
+    .folder-label {
+      font-size: 14px;
+      font-weight: 500;
+      color: #1a1a1a;
+      text-align: center;
+      text-shadow: 0 1px 2px rgba(255,255,255,0.7);
+    }
+
+    /* === Окна галереи (папки → фото) === */
+    .window {
+      position: absolute;
+      background: white;
+      border-radius: 8px;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.15);
+      min-width: 520px;
+      min-height: 320px;
+      z-index: 10;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+
+    .window-header {
+      height: 30px;
+      background: #f5f6f7;
+      border-top-left-radius: 8px;
+      border-top-right-radius: 8px;
+      display: flex;
+      align-items: center;
+      padding: 0 12px;
+      cursor: move;
+    }
+
+    .window-buttons {
+      display: flex;
+      gap: 8px;
+    }
+
+    .btn {
+      width: 12px;
+      height: 12px;
+      border-radius: 50%;
+    }
+
+    .btn-close { background: #ff5f57; }
+    .btn-min { background: #ffbd2e; }
+    .btn-max { background: #28c940; }
+
+    .window-title {
+      margin-left: 12px;
+      font-size: 12px;
+      color: #666;
+      flex: 1;
+    }
+
+    .window-content {
+      padding: 20px;
+      flex: 1;
+      overflow: auto;
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+      gap: 16px;
+      background: #fafafa;
+    }
+
+    .photo {
+      width: 120px;
+      height: 120px;
+      object-fit: cover;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: transform 0.2s, box-shadow 0.2s;
+    }
+
+    .photo:hover {
+      transform: scale(1.05);
+      box-shadow: 0 4px 10px rgba(0,100,255,0.3);
+    }
+
+    /* === Lightbox (двойной клик → zoom) === */
+    .lightbox {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100vw;
+      height: 100vh;
+      background: rgba(0,0,0,0.92);
+      z-index: 1000;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.3s;
+    }
+
+    .lightbox.active {
+      opacity: 1;
+      pointer-events: all;
+    }
+
+    .lightbox-content {
+      position: relative;
+      max-width: 90vw;
+      max-height: 90vh;
+      overflow: hidden;
+    }
+
+    .lightbox-img {
+      display: block;
+      max-width: 100%;
+      max-height: 90vh;
+      transform-origin: center;
+      transition: transform 0.1s;
+    }
+
+    .lightbox-close {
+      position: absolute;
+      top: 20px;
+      right: 20px;
+      width: 40px;
+      height: 40px;
+      background: rgba(255,255,255,0.2);
+      border-radius: 50%;
+      color: white;
+      font-size: 24px;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      cursor: pointer;
+      backdrop-filter: blur(4px);
+    }
+
+    /* === UI-элементы: контакты, стикеры, кнопки === */
+    .contact-bar {
+      position: fixed;
+      top: 20px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: rgba(255,255,255,0.7);
+      padding: 8px 20px;
+      border-radius: 12px;
+      color: #0055ff;
+      font-weight: 500;
+      font-size: 0.9rem;
+      backdrop-filter: blur(15px);
+      box-shadow: 0 4px 12px rgba(0,0,0,0.06);
+      z-index: 100;
+      border: 1px solid rgba(0,85,255,0.15);
+    }
+
+    .sticker-panel {
+      position: fixed;
+      left: 20px;
+      top: 50%;
+      transform: translateY(-50%);
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      z-index: 200;
+    }
+
+    .sticker-btn {
+      width: 48px;
+      height: 48px;
+      background: #0055ff;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 22px;
+      color: white;
+      cursor: pointer;
+      box-shadow: 0 4px 10px rgba(0,85,255,0.3);
+    }
+
+    .sticker-btn:hover { transform: scale(1.12); }
+
+    .star {
+      position: absolute;
+      pointer-events: none;
+      filter: drop-shadow(0 0 6px rgba(0,85,255,0.6));
+      z-index: 90;
+    }
+
+    #scroll-to-top {
+      position: fixed;
+      bottom: 30px;
+      right: 30px;
+      width: 50px;
+      height: 50px;
+      background: #0055ff;
+      color: white;
+      border: none;
+      border-radius: 50%;
+      font-size: 20px;
+      cursor: pointer;
+      opacity: 0;
+      transform: translateY(20px);
+      transition: opacity 0.3s, transform 0.3s;
+      box-shadow: 0 4px 12px rgba(0,85,255,0.3);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 1000;
+    }
+
+    @keyframes fadeIn { from { opacity: 0; transform: scale(0.95); } to { opacity: 1; transform: scale(1); } }
+    .window, .note-card { animation: fadeIn 0.3s ease-out; }
+  </style>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+      user-select: none;
+    }
+
+    body {
+      background: linear-gradient(135deg, #a0c4ff, #72a1ff);
+      min-height: 100vh;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      overflow: hidden;
+    }
+
+    /* Папка */
+    .folder {
+      position: absolute;
+      width: 120px;
+      height: 100px;
+      cursor: grab;
+      z-index: 10;
+    }
+    .folder:active { cursor: grabbing; }
+
+    .folder-icon {
+      width: 100%;
+      height: 80px;
+      background: linear-gradient(to bottom, #f0f8ff, #d0e6ff);
+      border: 1px solid rgba(0,0,0,0.1);
+      border-radius: 8px 8px 0 0;
+      position: relative;
+      box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+    }
+
+    .folder-tab {
+      position: absolute;
+      top: -12px;
+      left: 15px;
+      width: 30px;
+      height: 12px;
+      background: linear-gradient(to bottom, #f0f8ff, #d0e6ff);
+      border: 1px solid rgba(0,0,0,0.1);
+      border-radius: 4px 4px 0 0;
+    }
+
+    .folder-label {
+      text-align: center;
+      font-size: 12px;
+      margin-top: 4px;
+      color: #333;
+    }
+
+    /* Окно галереи */
+    .window {
+      display: none;
+      position: absolute;
+      top: 100px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: white;
+      border-radius: 10px;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+      z-index: 20;
+      resize: both;
+      overflow: auto;
+      min-width: 400px;
+      min-height: 300px;
+      max-width: 95vw;
+      max-height: 90vh;
+    }
+
+    .title-bar {
+      height: 28px;
+      background: linear-gradient(to bottom, #e0e0e0, #c0c0c0);
+      border-bottom: 1px solid #999;
+      display: flex;
+      align-items: center;
+      padding-left: 10px;
+      cursor: move;
+    }
+
+    .buttons {
+      display: flex;
+      gap: 8px;
+      margin-right: 10px;
+    }
+
+    .btn {
+      width: 12px;
+      height: 12px;
+      border-radius: 50%;
+      cursor: pointer;
+    }
+
+    .close { background: #ff5f57; }
+    .minimize { background: #ffbd2e; }
+    .maximize { background: #28c940; }
+
+    .title {
+      flex: 1;
+      text-align: center;
+      font-size: 12px;
+      color: #333;
+      font-weight: 500;
+    }
+
+    .content {
+      padding: 20px;
+      min-height: 200px;
+    }
+
+    /* Галерея — иерархическая сетка */
+    .gallery-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 20px;
+  align-items: start;
+}
+
+.photo-item {
+  text-align: center;
+  transition: transform 0.2s;
+}
+
+.photo-item img {
+  width: 100%;
+  height: auto;       /* сохраняет пропорции */
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+  cursor: zoom-in;
+  transition: transform 0.3s ease;
+  object-fit: contain; /* фото НЕ деформируется */
+}
+
+/* Зум */
+.photo-item img.zoomed {
+  transform: scale(1.3);
+  cursor: zoom-out !important;
+}
+
+/* Удаляем aspect-ratio и max-height */
+.photo-item.big img {
+  object-fit: cover;     /* растягиваем красиво */
+}
+
+.photo-item.small img {
+  object-fit: cover;
+}
+
+/* Адаптив */
+@media (min-width: 600px) {
+  .two-small {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 20px;
+  }
+  .two-small .photo-item {
+    grid-column: span 1;
+  }
+}
+
+  </style>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      background: radial-gradient(circle at 30% 30%, #d7ebff, #ffffff 70%);
+      min-height: 100vh;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      overflow: hidden;
+      position: relative;
+    }
+
+    /* === Dock === */
+    .dock {
+      position: fixed;
+      bottom: 24px;
+      left: 50%;
+      transform: translateX(-50%);
+      display: flex;
+      align-items: flex-end;
+      padding: 16px 32px;
+      gap: 10px;
+      background: rgba(255, 255, 255, 0.84);
+      backdrop-filter: blur(26px);
+      -webkit-backdrop-filter: blur(26px);
+      border-radius: 30px;
+      border: 1px solid rgba(255, 255, 255, 0.7);
+      box-shadow:
+        0 5px 22px rgba(0, 0, 0, 0.14),
+        inset 0 1px 0 rgba(255, 255, 255, 0.95),
+        inset 0 -1px 0 rgba(0, 0, 0, 0.04);
+      z-index: 100;
+    }
+
+    .dock-item {
+      width: 60px;
+      height: 60px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.35s cubic-bezier(0.25, 1.2, 0.4, 1);
+      cursor: pointer;
+      position: relative;
+      filter: drop-shadow(0 2px 4px rgba(0,0,0,0.14));
+    }
+
+    .dock-item:hover {
+      transform: scale(1.55) translateY(-26px);
+      z-index: 20;
+    }
+
+    .dock-item img {
+      width: 100%;
+      height: 100%;
+      object-fit: contain;
+    }
+
+    /* Смайлик-разделитель: мягкий синий квадрат */
+    .smiley-spacer {
+      width: 60px;
+      height: 60px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 20px;
+      background: #2600ff;
+      border: 2px solid #2600ff;
+      border-radius: 12px;
+      cursor: pointer;
+      transition: all 0.25s ease;
+      box-shadow: 0 2px 5px rgba(0, 102, 204, 0.15);
+    }
+
+    .smiley-spacer:hover {
+      transform: scale(1.3) translateY(-4px);
+      background: #cce6ff;
+      z-index: 15;
+      box-shadow: 0 4px 8px rgba(0, 102, 204, 0.25);
+    }
+
+    /* === Aqua Notes Window === */
+    .note-window {
+      position: absolute;
+      width: 320px;
+      border-radius: 14px;
+      overflow: hidden;
+      box-shadow:
+        0 8px 30px rgba(0, 0, 0, 0.12),
+        0 2px 6px rgba(0, 0, 0, 0.04);
+      z-index: 90;
+      opacity: 0;
+      transform: scale(0.95);
+      transition: opacity 0.3s ease, transform 0.3s cubic-bezier(0.2, 0, 0.13, 1.5);
+      user-select: none;
+    }
+
+    .note-window.visible {
+      opacity: 1;
+      transform: scale(1);
+    }
+
+    .note-header {
+      height: 30px;
+      background: rgba(255, 255, 255, 0.72);
+      backdrop-filter: blur(24px);
+      -webkit-backdrop-filter: blur(24px);
+      display: flex;
+      align-items: center;
+      padding: 0 12px;
+      border-bottom: 1px solid rgba(0, 0, 0, 0.06);
+      cursor: move;
+    }
+
+    .window-controls {
+      display: flex;
+      gap: 8px;
+    }
+
+    .dot {
+      width: 12px;
+      height: 12px;
+      border-radius: 50%;
+      cursor: pointer;
+    }
+
+    .dot.close { background: #ff5f57; }
+    .dot.min   { background: #ffbd2e; }
+    .dot.max   { background: #28c940; opacity: 0.4; pointer-events: none; }
+
+    .note-title {
+      flex: 1;
+      text-align: center;
+      font-size: 13px;
+      font-weight: 500;
+      color: #333;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    .note-content {
+      background: white;
+      padding: 22px;
+      font-size: 14.5px;
+      line-height: 1.55;
+      color: #1d1d1f;
+    }
+
+    .note-content h3 {
+      margin: 0 0 12px 0;
+      font-weight: 600;
+      font-size: 16px;
+    }
+
+    /* Перетаскиваемые смайлики */
+    .draggable-emoji {
+      position: absolute;
+      font-size: 42px;
+      cursor: grab;
+      user-select: none;
+      z-index: 50;
+      filter: drop-shadow(0 2px 4px rgba(0,0,0,0.12));
+    }
+
+    .draggable-emoji.dragging {
+      cursor: grabbing;
+      z-index: 60;
+      transform: scale(1.1);
+    }
+  </style>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      background: radial-gradient(circle at 30% 30%, #d7ebff, #ffffff 70%);
+      min-height: 100vh;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      overflow: hidden;
+      position: relative;
+    }
+
+    /* === Dock === */
+    .dock {
+      position: fixed;
+      bottom: 24px;
+      left: 50%;
+      transform: translateX(-50%);
+      display: flex;
+      align-items: flex-end;
+      padding: 16px 32px;
+      gap: 10px;
+      background: rgba(255, 255, 255, 0.84);
+      backdrop-filter: blur(26px);
+      -webkit-backdrop-filter: blur(26px);
+      border-radius: 30px;
+      border: 1px solid rgba(255, 255, 255, 0.7);
+      box-shadow:
+        0 5px 22px rgba(0, 0, 0, 0.14),
+        inset 0 1px 0 rgba(255, 255, 255, 0.95),
+        inset 0 -1px 0 rgba(0, 0, 0, 0.04);
+      z-index: 100;
+    }
+
+    .dock-item {
+      width: 60px;
+      height: 60px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.35s cubic-bezier(0.25, 1.2, 0.4, 1);
+      cursor: pointer;
+      position: relative;
+      filter: drop-shadow(0 2px 4px rgba(0,0,0,0.14));
+    }
+
+    .dock-item:hover {
+      transform: scale(1.55) translateY(-26px);
+      z-index: 20;
+    }
+
+    .dock-item img {
+      width: 100%;
+      height: 100%;
+      object-fit: contain;
+    }
+
+    /* Смайлик-разделитель: мягкий синий квадрат */
+    .smiley-spacer {
+      width: 60px;
+      height: 60px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 20px;
+      background: #2600ff;
+      border: 2px solid #2600ff;
+      border-radius: 12px;
+      cursor: pointer;
+      transition: all 0.25s ease;
+      box-shadow: 0 2px 5px rgba(0, 102, 204, 0.15);
+    }
+
+    .smiley-spacer:hover {
+      transform: scale(1.3) translateY(-4px);
+      background: #cce6ff;
+      z-index: 15;
+      box-shadow: 0 4px 8px rgba(0, 102, 204, 0.25);
+    }
+
+    /* === Aqua Notes Window === */
+    .note-window {
+      position: absolute;
+      width: 320px;
+      border-radius: 14px;
+      overflow: hidden;
+      box-shadow:
+        0 8px 30px rgba(0, 0, 0, 0.12),
+        0 2px 6px rgba(0, 0, 0, 0.04);
+      z-index: 90;
+      opacity: 0;
+      transform: scale(0.95);
+      transition: opacity 0.3s ease, transform 0.3s cubic-bezier(0.2, 0, 0.13, 1.5);
+      user-select: none;
+    }
+
+    .note-window.visible {
+      opacity: 1;
+      transform: scale(1);
+    }
+
+    .note-header {
+      height: 30px;
+      background: rgba(255, 255, 255, 0.72);
+      backdrop-filter: blur(24px);
+      -webkit-backdrop-filter: blur(24px);
+      display: flex;
+      align-items: center;
+      padding: 0 12px;
+      border-bottom: 1px solid rgba(0, 0, 0, 0.06);
+      cursor: move;
+    }
+
+    .window-controls {
+      display: flex;
+      gap: 8px;
+    }
+
+    .dot {
+      width: 12px;
+      height: 12px;
+      border-radius: 50%;
+      cursor: pointer;
+    }
+
+    .dot.close { background: #ff5f57; }
+    .dot.min   { background: #ffbd2e; }
+    .dot.max   { background: #28c940; opacity: 0.4; pointer-events: none; }
+
+    .note-title {
+      flex: 1;
+      text-align: center;
+      font-size: 13px;
+      font-weight: 500;
+      color: #333;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    .note-content {
+      background: white;
+      padding: 22px;
+      font-size: 14.5px;
+      line-height: 1.55;
+      color: #1d1d1f;
+    }
+
+    .note-content h3 {
+      margin: 0 0 12px 0;
+      font-weight: 600;
+      font-size: 16px;
+    }
+
+    /* Перетаскиваемые смайлики */
+    .draggable-emoji {
+      position: absolute;
+      font-size: 42px;
+      cursor: grab;
+      user-select: none;
+      z-index: 50;
+      filter: drop-shadow(0 2px 4px rgba(0,0,0,0.12));
+    }
+
+    .draggable-emoji.dragging {
+      cursor: grabbing;
+      z-index: 60;
+      transform: scale(1.1);
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Анимированные облака -->
+  <div class="clouds">
+    <div class="cloud cloud-1"></div>
+    <div class="cloud cloud-2"></div>
+    <div class="cloud cloud-3"></div>
+  </div>
+
+  <!-- Контактная панель -->
+  <div class="contact-bar">
+    aminamurtayovag@gmail.com • +420 602 373 234 • Praha • behance.net/aminamurtazova
+  </div>
+
+  <!-- === macOS Notes — твоё CV === -->
+  <div class="note-card" style="top: 100px; left: 50px; width: 360px;">
+    <div class="note-header"><div class="window-controls"><div class="dot close"></div><div class="dot min"></div><div class="dot max"></div></div></div>
+    <div class="note-content">
+      <h2>O mně</h2>
+      <p>Jsem junior grafická designérka s praktickými zkušenostmi z reklamních agentur a kreativních studií. Specializuji se na grafický design, ilustrace a vizuální komunikaci. Mám silný cit pro detail, estetiku a schopnost vytvářet kreativní řešení, která fungují. Pracuji na vlastním autorském projektu – knize s AR (rozšířenou realitou), kterou si sama píšu a ilustruji. Hledám příležitost, kde mohu dále rozvíjet své dovednosti a přispívat k zajímavým projek</p>
+    </div>
+  </div>
+
+  <div class="note-card" style="top: 100px; left: 440px; width: 360px;">
+    <div class="note-header"><div class="window-controls"><div class="dot close"></div><div class="dot min"></div><div class="dot max"></div></div></div>
+    <div class="note-content">
+      <h2>Zkušenosti</h2>
+      <div style="border-left:2px solid rgba(0,85,255,0.15); padding-left:18px; margin-bottom:16px;">
+        <div style="display:flex; justify-content:space-between; margin-bottom:4px;">
+          <div><strong style="color:#0055ff">Intern</strong> • Publicis Group</div>
+          <span style="background:rgba(0,85,255,0.05); padding:2px 8px; border-radius:8px; font-size:0.8rem; color:#0055ff">2024</span>
+        </div>
+        <ul style="padding-left:16px;"><li>Spolupráce na kreativních konceptech pro reklamní kampaně</li><li>Tvorba vizuálních návrhů a prezentací pro klienty</li><li>Vytváření více variant designérských řešení</li><li> Práce v Adobe Illustrator a Photoshop</li></ul>
+      </div>
+      <div style="border-left:2px solid rgba(0,85,255,0.15); padding-left:18px;">
+        <div style="display:flex; justify-content:space-between; margin-bottom:4px;">
+          <div><strong style="color:#0055ff">Intern</strong> • Pingpongstudio</div>
+          <span style="background:rgba(0,85,255,0.05); padding:2px 8px; border-radius:8px; font-size:0.8rem; color:#0055ff">2024</span>
+        </div>
+        <ul style="padding-left:16px;"><li>Brand identity</li><li>Návrhy grafických materiálů pro různé projekty</li><li>Návrhy grafických materiálů pro různé projekty</li></ul>
+      </div>
+    </div>
+  </div>
+
+  <div class="note-card" style="top: 440px; left: 50px; width: 360px;">
+    <div class="note-header"><div class="window-controls"><div class="dot close"></div><div class="dot min"></div><div class="dot max"></div></div></div>
+    <div class="note-content">
+      <h2>Vzdělání</h2>
+      <div style="border-left:2px solid rgba(0,85,255,0.15); padding-left:18px;">
+        <div style="display:flex; justify-content:space-between; margin-bottom:4px;">
+          <div><strong style="color:#0055ff">Grafický design</strong> • VOŠ Michael</div>
+          <span style="background:rgba(0,85,255,0.05); padding:2px 8px; border-radius:8px; font-size:0.8rem; color:#0055ff">2023–2025</span>
+        </div>
+        <p>Typografie • Ilustrace • Vizuální komunikace</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="note-card" style="top: 760px; left: 50px; width: 360px;">
+    <div class="note-header"><div class="window-controls"><div class="dot close"></div><div class="dot min"></div><div class="dot max"></div></div></div>
+    <div class="note-content">
+      <h2>Jazyky</h2>
+      <div style="display:flex; gap:10px; margin-top:12px;">
+        <div style="text-align:center; flex:1; padding:12px; background:rgba(0,85,255,0.03); border-radius:8px;">
+          <div style="font-weight:600; color:#0055ff">Čeština</div>
+          <div>Plynule</div>
+        </div>
+        <div style="text-align:center; flex:1; padding:12px; background:rgba(0,85,255,0.03); border-radius:8px;">
+          <div style="font-weight:600; color:#0055ff">Angličtina</div>
+          <div>Plynule</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="note-card" style="top: 440px; left: 820px; width: 340px;">
+    <div class="note-header"><div class="window-controls"><div class="dot close"></div><div class="dot min"></div><div class="dot max"></div></div></div>
+    <div class="note-content">
+      <h2>Soft skills</h2>
+      <ul style="display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-top:12px;">
+        <li> Týmová spolupráce </li> <li> Rychlé učení</li>
+        <li> Zodpovědnost </li> <li>  Flexibilita </li>
+        <li> Kreativní myšlení </li> <li>  Time management </li>
+      </ul>
+    </div>
+  </div>
+
+<!-- Папка 1 -->
+<div class="folder" id="folder1" style="top: 100px; left: 1400px;">
+  <div class="folder-icon">
+    <div class="folder-tab"></div>
+  </div>
+  <div class="folder-label">Ilustrace</div>
+</div>
+
+<!-- Папка 2 -->
+<div class="folder" id="folder2" style="top: 250px; left: 1400px;">
+  <div class="folder-icon">
+    <div class="folder-tab"></div>
+  </div>
+  <div class="folder-label">BRIXTON_BRENDING</div>
+</div>
+
+<!-- Папка 3 -->
+<div class="folder" id="folder3" style="top: 400px; left: 1400px;">
+  <div class="folder-icon">
+    <div class="folder-tab"></div>
+  </div>
+  <div class="folder-label">STEFLOVY_BRENDING</div>
+</div>
+
+<!-- Папка 4 -->
+<div class="folder" id="folder4" style="top: 550px; left: 1400px;">
+  <div class="folder-icon">
+    <div class="folder-tab"></div>
+  </div>
+  <div class="folder-label">Projects</div>
+</div>
+
+<!-- Окно 1 -->
+<div class="window" id="window1">
+  <div class="title-bar">
+    <div class="buttons">
+      <div class="btn close"></div>
+      <div class="btn minimize"></div>
+      <div class="btn maximize"></div>
+    </div>
+    <div class="title">illustration</div>
+  </div>
+  <div class="content">
+    <div class="gallery-grid" id="gallery1"></div>
+  </div>
+</div>
+
+<!-- Окно 2 -->
+<div class="window" id="window2">
+  <div class="title-bar">
+    <div class="buttons">
+      <div class="btn close"></div>
+      <div class="btn minimize"></div>
+      <div class="btn maximize"></div>
+    </div>
+    <div class="title">BRIXTON_BRENDING</div>
+  </div>
+  <div class="content">
+    <div class="gallery-grid" id="gallery2"></div>
+  </div>
+</div>
+
+<!-- Окно 3 -->
+<div class="window" id="window3">
+  <div class="title-bar">
+    <div class="buttons">
+      <div class="btn close"></div>
+      <div class="btn minimize"></div>
+      <div class="btn maximize"></div>
+    </div>
+    <div class="title">STEFLOVY_BRENDING</div>
+  </div>
+  <div class="content">
+    <div class="gallery-grid" id="gallery3"></div>
+  </div>
+</div>
+
+<!-- Окно 4 -->
+<div class="window" id="window4">
+  <div class="title-bar">
+    <div class="buttons">
+      <div class="btn close"></div>
+      <div class="btn minimize"></div>
+      <div class="btn maximize"></div>
+    </div>
+    <div class="title">Projects Gallery</div>
+  </div>
+  <div class="content">
+    <div class="gallery-grid" id="gallery4"></div>
+  </div>
+</div>
+
+  <!-- Lightbox -->
+  <div class="lightbox" id="lightbox">
+    <div class="lightbox-content">
+      <img class="lightbox-img" id="lightbox-img" src="" alt="Fullscreen" />
+    </div>
+    <div class="lightbox-close" id="lightbox-close">×</div>
+  </div>
+
+  <!-- Кнопка Nahoru -->
+  <button id="scroll-to-top">↑</button>
+  
+  <!-- Dock -->
+  <div class="dock">
+    <div class="dock-item">
+      <div class="smiley-spacer" data-emoji="💫">💫</div>
+    </div>
+    <div class="dock-item" data-app="photoshop">
+      <img src="https://uploads.onecompiler.io/444n3vtba/446z7f8se/Datovy%CC%81%20zdroj%208@4x.png" alt="Photoshop">
+    </div>
+
+    <div class="dock-item">
+      <div class="smiley-spacer" data-emoji="😊">😊</div>
+    </div>
+
+    <div class="dock-item" data-app="illustrator">
+      <img src="https://uploads.onecompiler.io/444n3vtba/446z7f8se/Datovy%CC%81%20zdroj%209@4x.png" alt="Illustrator">
+    </div>
+
+    <div class="dock-item">
+      <div class="smiley-spacer" data-emoji="✨">✨</div>
+    </div>
+
+    <div class="dock-item" data-app="aftereffects">
+      <img src="https://uploads.onecompiler.io/444n3vtba/446z59xpq/Datovy%CC%81%20zdroj%206@4x.png" alt="After Effects">
+    </div>
+
+    <div class="dock-item">
+      <div class="smiley-spacer" data-emoji="🦄">🦄</div>
+    </div>
+
+    <div class="dock-item" data-app="indesign">
+      <img src="https://uploads.onecompiler.io/444n3vtba/446z7f8se/Datovy%CC%81%20zdroj%207@4x.png" alt="InDesign">
+    </div>
+
+    <div class="dock-item">
+      <div class="smiley-spacer" data-emoji="😎">😎</div>
+    </div>
+
+    <div class="dock-item" data-app="figma">
+      <img src="https://uploads.onecompiler.io/444n3vtba/446z7f8se/Datovy%CC%81%20zdroj%2010@4x.png" alt="Figma">
+    </div>
+    <div class="dock-item">
+      <div class="smiley-spacer" data-emoji="🎀">🎀</div>
+    </div>
+  </div>
+  
+
+  <!-- Шаблон заметки (клонируем по клику) -->
+  <template id="note-template">
+    <div class="note-window">
+      <div class="note-header">
+        <div class="window-controls">
+          <div class="dot close"></div>
+          <div class="dot min"></div>
+          <div class="dot max"></div>
+        </div>
+        <div class="note-title">Заметка</div>
+      </div>
+      <div class="note-content">
+        <h3>Заголовок</h3>
+        <p>Текст заметки. Можно редактировать в коде.</p>
+      </div>
+    </div>
+  </template>
+
+  <script>
+    // === Данные: фото для папок + Portfolio! ===
+    const photoSets = {
+      vacation: [
+        'https://picsum.photos/1200/800?random=1',
+        'https://picsum.photos/1200/800?random=2'
+      ],
+      projects: [
+        'https://picsum.photos/1200/800?random=11',
+        'https://picsum.photos/1200/800?random=12'
+      ],
+      ar_book: [
+        'https://picsum.photos/1200/800?random=21',
+        'https://picsum.photos/1200/800?random=22',
+        'https://picsum.photos/1200/800?random=23'
+      ],
+      // ✅ ТВОЁ ПОРТФОЛИО — файлы/проекты:
+      portfolio: [
+        'https://picsum.photos/1000/600?random=31', // AR Book — обложка
+        'https://picsum.photos/1000/600?random=32', // Pingpong — брендбук
+        'https://picsum.photos/1000/600?random=33', // Publicis — motion banner
+        'https://picsum.photos/1000/600?random=34', // Behance — скрин
+        'https://picsum.photos/1000/600?random=35'  // AR Demo — интерактив
+      ]
+    };
+
+    // === Перетаскивание карточек CV (только за заголовок) ===
+    document.querySelectorAll('.note-card').forEach(card => {
+      const header = card.querySelector('.note-header');
+      if (!header) return;
+      let isDragging = false, offsetX, offsetY;
+      header.addEventListener('mousedown', (e) => {
+        isDragging = true;
+        const rect = card.getBoundingClientRect();
+        offsetX = e.clientX - rect.left;
+        offsetY = e.clientY - rect.top;
+        card.style.zIndex = '90';
+        e.preventDefault();
+      });
+      document.addEventListener('mousemove', (e) => {
+        if (isDragging) {
+          card.style.left = (e.clientX - offsetX) + 'px';
+          card.style.top = (e.clientY - offsetY) + 'px';
+        }
+      });
+      document.addEventListener('mouseup', () => isDragging = false);
+    });
+
+    // === Перетаскивание папок ===
+    document.querySelectorAll('.folder').forEach(folder => {
+      let isDragging = false, offsetX, offsetY;
+      folder.addEventListener('mousedown', (e) => {
+        if (e.button !== 0) return;
+        isDragging = true;
+        folder.classList.add('dragging');
+        const rect = folder.getBoundingClientRect();
+        offsetX = e.clientX - rect.left;
+        offsetY = e.clientY - rect.top;
+        folder.style.cursor = 'grabbing';
+        e.preventDefault();
+      });
+      document.addEventListener('mousemove', (e) => {
+        if (isDragging) {
+          folder.style.left = (e.clientX - offsetX) + 'px';
+          folder.style.top = (e.clientY - offsetY) + 'px';
+        }
+      });
+      document.addEventListener('mouseup', () => {
+        if (isDragging) {
+          folder.classList.remove('dragging');
+          folder.style.cursor = 'grab';
+          isDragging = false;
+        }
+      });
+    });
+
+    // === Открытие окон (галерея) по клику на папку ===
+    document.querySelectorAll('.folder').forEach(folder => {
+      folder.addEventListener('click', (e) => {
+        if (e.detail === 2) return; // игнор двойного клика
+        const folderName = folder.dataset.folder;
+        const photos = photoSets[folderName] || [];
+        const label = folder.querySelector('.folder-label').textContent;
+
+        const win = document.createElement('div');
+        win.className = 'window';
+        const rect = folder.getBoundingClientRect();
+        let left = rect.left + 20;
+        let top = rect.top + 20;
+        left = Math.min(left, window.innerWidth - 550);
+        top = Math.min(top, window.innerHeight - 350);
+        win.style.left = left + 'px';
+        win.style.top = top + 'px';
+
+        win.innerHTML = `
+          <div class="window-header">
+            <div class="window-buttons">
+              <div class="btn btn-close"></div>
+              <div class="btn btn-min"></div>
+              <div class="btn btn-max"></div>
+            </div>
+            <div class="window-title">${label}</div>
+          </div>
+          <div class="window-content"></div>
+        `;
+
+        document.body.appendChild(win);
+
+        const content = win.querySelector('.window-content');
+        photos.forEach(src => {
+          const img = document.createElement('img');
+          img.src = src;
+          img.className = 'photo';
+          img.dataset.src = src;
+          content.appendChild(img);
+        });
+
+        // Закрытие окна
+        win.querySelector('.btn-close').addEventListener('click', () => {
+          win.style.opacity = '0';
+          win.style.transform = 'scale(0.95)';
+          setTimeout(() => win.remove(), 200);
+        });
+
+        // Перетаскивание окна
+        const header = win.querySelector('.window-header');
+        let winDragging = false, winOffsetX, winOffsetY;
+        header.addEventListener('mousedown', (e) => {
+          if (e.target.classList.contains('btn')) return;
+          winDragging = true;
+          winOffsetX = e.clientX - parseFloat(win.style.left || 0);
+          winOffsetY = e.clientY - parseFloat(win.style.top || 0);
+          win.style.cursor = 'grabbing';
+          e.preventDefault();
+        });
+        document.addEventListener('mousemove', (e) => {
+          if (winDragging) {
+            win.style.left = (e.clientX - winOffsetX) + 'px';
+            win.style.top = (e.clientY - winOffsetY) + 'px';
+          }
+        });
+        document.addEventListener('mouseup', () => winDragging = false);
+
+        // Двойной клик → полноэкранный просмотр
+        content.addEventListener('dblclick', (e) => {
+          const img = e.target;
+          if (!img.classList.contains('photo')) return;
+          const lightbox = document.getElementById('lightbox');
+          const lightboxImg = document.getElementById('lightbox-img');
+          lightboxImg.src = img.dataset.src;
+          lightbox.classList.add('active');
+
+          let scale = 1, posX = 0, posY = 0, isPanning = false, startX, startY;
+
+          const updateTransform = () => {
+            lightboxImg.style.transform = `translate(${posX}px, ${posY}px) scale(${scale})`;
+          };
+
+          lightboxImg.addEventListener('wheel', (e) => {
+            e.preventDefault();
+            const delta = e.deltaY > 0 ? 0.9 : 1.1;
+            const newScale = Math.min(Math.max(0.5, scale * delta), 4);
+            const rect = lightboxImg.getBoundingClientRect();
+            const mouseX = e.clientX - rect.left - posX;
+            const mouseY = e.clientY - rect.top - posY;
+            scale = newScale;
+            posX = e.clientX - rect.left - mouseX * scale;
+            posY = e.clientY - rect.top - mouseY * scale;
+            updateTransform();
+          }, { passive: false });
+
+          lightboxImg.addEventListener('mousedown', (e) => {
+            if (e.button !== 0) return;
+            isPanning = true;
+            startX = e.clientX - posX;
+            startY = e.clientY - posY;
+            lightboxImg.style.cursor = 'grabbing';
+            e.preventDefault();
+          });
+
+          const mm = (e) => { if (isPanning) { posX = e.clientX - startX; posY = e.clientY - startY; updateTransform(); } };
+          const mu = () => { isPanning = false; lightboxImg.style.cursor = 'zoom-in'; };
+          document.addEventListener('mousemove', mm);
+          document.addEventListener('mouseup', mu);
+
+          const close = () => {
+            lightbox.classList.remove('active');
+            scale = 1; posX = 0; posY = 0;
+            updateTransform();
+            document.removeEventListener('mousemove', mm);
+            document.removeEventListener('mouseup', mu);
+            document.removeEventListener('keydown', esc);
+          };
+          const esc = (e) => { if (e.key === 'Escape') close(); };
+          document.addEventListener('keydown', esc);
+          document.getElementById('lightbox-close').onclick = close;
+          lightbox.onclick = (e) => { if (e.target === lightbox) close(); };
+        });
+      });
+    });
+
+    // === Стикер-панель ===
+    document.querySelectorAll('.sticker-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const emoji = btn.getAttribute('data-emoji');
+        const el = document.createElement('div');
+        Object.assign(el.style, {
+          position: 'absolute',
+          fontSize: '32px',
+          left: `${Math.random() * (window.innerWidth - 32)}px`,
+          top: `${Math.random() * (window.innerHeight - 32)}px`,
+          cursor: 'grab',
+          zIndex: '1000'
+        });
+        el.textContent = emoji;
+        document.body.appendChild(el);
+
+        let isDragging = false, ox, oy;
+        el.addEventListener('mousedown', (e) => {
+          isDragging = true;
+          const r = el.getBoundingClientRect();
+          ox = e.clientX - r.left;
+          oy = e.clientY - r.top;
+          e.preventDefault();
+        });
+        document.addEventListener('mousemove', (e) => {
+          if (isDragging) {
+            el.style.left = (e.clientX - ox) + 'px';
+            el.style.top = (e.clientY - oy) + 'px';
+          }
+        });
+        document.addEventListener('mouseup', () => isDragging = false);
+      });
+    });
+
+    // === Звёздочки на клик ===
+    const starSVG = `<svg viewBox="-10 -10 20 20" width="100%" height="100%"><path d="M0,-9 L2.6,-2.8 L9.2,-2.8 L4.2,1.2 L6,7.8 L0,4.2 L-6,7.8 L-4.2,1.2 L-9.2,-2.8 L-2.6,-2.8 Z" fill="#0055ff"/></svg>`;
+    document.body.addEventListener('click', (e) => {
+      if (e.target.closest('.sticker-btn')) return;
+      const count = 30;
+      for (let i = 0; i < count; i++) {
+        const size = Math.random() * 10 + 5;
+        const angle = Math.random() * Math.PI * 2;
+        const speed = Math.random() * 300 + 100;
+        const life = Math.random() * 1.2 + 0.5;
+        const rotSpeed = (Math.random() - 0.5) * 5;
+
+        const div = document.createElement('div');
+        div.className = 'star';
+        div.innerHTML = starSVG;
+        Object.assign(div.style, {
+          width: `${size}px`,
+          height: `${size}px`,
+          left: `${e.clientX}px`,
+          top: `${e.clientY}px`,
+          transform: `rotate(${Math.random()*360}deg)`,
+          zIndex: '90'
+        });
+        document.body.appendChild(div);
+
+        let start = null;
+        const animate = (ts) => {
+          if (!start) start = ts;
+          const t = (ts - start) / 1000;
+          if (t > life) return div.remove();
+          const p = t / life;
+          const d = speed * t * (1 - p * 0.8);
+          const r = rotSpeed * t * 360;
+          div.style.left = `${e.clientX + Math.cos(angle) * d}px`;
+          div.style.top = `${e.clientY + Math.sin(angle) * d}px`;
+          div.style.opacity = Math.max(0, 1 - p * 1.3);
+          div.style.transform = `rotate(${r}deg)`;
+          div.style.filter = `drop-shadow(0 0 ${6*(1-p)}px rgba(0,85,255,${0.6*(1-p)}))`;
+          requestAnimationFrame(animate);
+        };
+        requestAnimationFrame(animate);
+      }
+    });
+
+    // Приветствие: звёздочки в центре через 1 сек
+    setTimeout(() => {
+      const x = window.innerWidth / 2, y = window.innerHeight / 2;
+      document.body.dispatchEvent(new MouseEvent('click', { clientX: x, clientY: y }));
+    }, 1000);
+
+    // Кнопка "Nahoru"
+    const btn = document.getElementById('scroll-to-top');
+    window.addEventListener('scroll', () => {
+      btn.style.opacity = window.scrollY > 400 ? '1' : '0';
+      btn.style.transform = window.scrollY > 400 ? 'translateY(0)' : 'translateY(20px)';
+    });
+    btn.addEventListener('click', () => window.scrollTo({ top: 0, behavior: 'smooth' }));
+  </script>
+<script>
+  // === Данные для каждой папки ===
+  const portfolios = {
+    1: {
+      title: "illustration",
+      photos: [
+        'https://imgur.com/Tohe0uI',
+        'images/int-02.jpg',
+        'images/int-03.jpg',
+        'images/int-01.jpg',
+        'images/int-05.jpg',
+        'images/int-06.jpg',
+      ]
+    },
+    2: {
+      title: "BRIXTON_BRENDING",
+      photos: [
+        'images/int-07.jpg',
+        'images/int-13.jpg',
+        'images/int-14.jpg',
+        'images/int-10.jpg',
+        'images/int-19.jpg',
+        'images/int-20.jpg',
+      ]
+    },
+    3: {
+      title: "STEFLOVY_BRENDING",
+      photos: [
+        'images/int-08.jpg',
+        'images/int-15.jpg',
+        'images/int-16.jpg',
+        'images/int-11.jpg',
+        'images/int-21.jpg',
+        'images/int-22.jpg',
+      ]
+    },
+    4: {
+      title: "Projects",
+      photos: [
+        'images/int-09.jpg',
+        'images/int-17.jpg',
+        'images/int-18.jpg',
+        'images/int-12.jpg',
+        'images/int-23.jpg',
+        'images/int-24.jpg',
+      ]
+    }
+  };
+
+  // === Функции перетаскивания ===
+  function makeDraggable(element) {
+    let isDragging = false, offsetX, offsetY;
+
+    element.addEventListener('mousedown', (e) => {
+      if (e.target.closest('.folder-icon, .folder-label')) {
+        isDragging = true;
+        const rect = element.getBoundingClientRect();
+        offsetX = e.clientX - rect.left;
+        offsetY = e.clientY - rect.top;
+        element.style.cursor = 'grabbing';
+      }
+    });
+
+    document.addEventListener('mousemove', (e) => {
+      if (!isDragging) return;
+      element.style.left = `${e.clientX - offsetX}px`;
+      element.style.top = `${e.clientY - offsetY}px`;
+    });
+
+    document.addEventListener('mouseup', () => {
+      if (isDragging) element.style.cursor = 'grab';
+      isDragging = false;
+    });
+  }
+
+  function makeWindowDraggable(windowEl, titleBar) {
+    let isWindowDragging = false, winOffsetX, winOffsetY;
+
+    titleBar.addEventListener('mousedown', (e) => {
+      if (!e.target.closest('.btn')) {
+        isWindowDragging = true;
+        const rect = windowEl.getBoundingClientRect();
+        winOffsetX = e.clientX - rect.left;
+        winOffsetY = e.clientY - rect.top;
+      }
+    });
+
+    document.addEventListener('mousemove', (e) => {
+      if (!isWindowDragging) return;
+      windowEl.style.left = `${e.clientX - winOffsetX}px`;
+      windowEl.style.top = `${e.clientY - winOffsetY}px`;
+      windowEl.style.transform = 'none';
+    });
+
+    document.addEventListener('mouseup', () => {
+      isWindowDragging = false;
+    });
+  }
+
+  // === Построение галереи ===
+  function buildGallery(galleryGrid, photos) {
+    galleryGrid.innerHTML = '';
+    let i = 0;
+
+    while (i < photos.length) {
+      if (i < photos.length) {
+        const item = createPhotoItem(photos[i], 'big');
+        galleryGrid.appendChild(item);
+        i++;
+      }
+
+      if (i < photos.length - 1) {
+        const pair = document.createElement('div');
+        pair.className = 'two-small';
+        pair.appendChild(createPhotoItem(photos[i], 'small'));
+        pair.appendChild(createPhotoItem(photos[i + 1], 'small'));
+        galleryGrid.appendChild(pair);
+        i += 2;
+      } else if (i < photos.length) {
+        const item = createPhotoItem(photos[i], 'small');
+        galleryGrid.appendChild(item);
+        i++;
+      }
+    }
+  }
+
+  function createPhotoItem(src, size) {
+    const div = document.createElement('div');
+    div.className = `photo-item ${size}`;
+    div.innerHTML = `<img src="${src}" alt="Фото">`;
+    
+    const img = div.querySelector('img');
+    img.addEventListener('dblclick', () => {
+      img.classList.toggle('zoomed');
+    });
+    img.addEventListener('wheel', (e) => {
+      if (e.ctrlKey || e.metaKey) {
+        e.preventDefault();
+        const scale = parseFloat(img.style.transform.replace(/[^0-9.-]/g, '') || 1);
+        const delta = e.deltaY > 0 ? -0.1 : 0.1;
+        const newScale = Math.min(Math.max(1, scale + delta), 2.5);
+        img.style.transform = `scale(${newScale})`;
+        img.classList.toggle('zoomed', newScale > 1.01);
+      }
+    });
+    return div;
+  }
+
+  // Запрет системного zoom
+  document.addEventListener('wheel', e => {
+    if (e.ctrlKey || e.metaKey) e.preventDefault();
+  }, { passive: false });
+
+  // === Инициализация всех папок и окон ===
+  for (let i = 1; i <= 4; i++) {
+    const folder = document.getElementById(`folder${i}`);
+    const windowEl = document.getElementById(`window${i}`);
+    const titleBar = windowEl.querySelector('.title-bar');
+    const galleryGrid = document.getElementById(`gallery${i}`);
+
+    // Перетаскивание папки
+    makeDraggable(folder);
+
+    // Перетаскивание окна
+    makeWindowDraggable(windowEl, titleBar);
+
+    // Кнопки окна
+    const closeBtn = windowEl.querySelector('.close');
+    const minimizeBtn = windowEl.querySelector('.minimize');
+    const maximizeBtn = windowEl.querySelector('.maximize');
+
+    closeBtn.addEventListener('click', () => {
+      windowEl.style.display = 'none';
+    });
+
+    minimizeBtn.addEventListener('click', () => {
+      windowEl.style.display = 'none';
+    });
+
+    maximizeBtn.addEventListener('click', () => {
+      if (windowEl.style.width && windowEl.style.width !== 'auto') {
+        windowEl.style.width = '';
+        windowEl.style.height = '';
+      } else {
+        windowEl.style.width = '90vw';
+        windowEl.style.height = '85vh';
+      }
+    });
+
+    // Открытие галереи при клике на папку
+    folder.addEventListener('click', () => {
+      windowEl.style.display = 'block';
+      windowEl.style.zIndex = 1000 + i;
+      buildGallery(galleryGrid, portfolios[i].photos);
+    });
+
+    // Инициализация галереи
+    buildGallery(galleryGrid, portfolios[i].photos);
+  }
+</script>
+ <script>
+    // Данные для приложений
+    const appData = {
+      photoshop: {
+        title: "Adobe Photoshop",
+        header: "🎨 Photoshop",
+        text: "Umím retuš fotografií, práci s vrstvami a úpravu obrázků."
+      },
+      illustrator: {
+        title: "Adobe Illustrator",
+        header: "✏️ Illustrator",
+        text: "Umím vytvářet vektorovou grafiku, loga a ilustrace"
+      },
+      aftereffects: {
+        title: "Adobe After Effects",
+        header: "🎬 After Effects",
+        text: "Zvládám základní animace a motion graphics."
+      },
+      indesign: {
+        title: "Adobe InDesign",
+        header: "📄 InDesign",
+        text: "Ovládám tvorbu vícestránkových dokumentů a přípravu pro tisk."
+      },
+      figma: {
+        title: "Figma",
+        header: "🧩 Figma",
+        text: "Umím navrhovat UI/UX design, prototypy a pracovat s komponentami."
+      }
+    };
+
+    // Открыть заметку
+    document.querySelectorAll('.dock-item[data-app]').forEach(item => {
+      item.addEventListener('click', (e) => {
+        const appId = e.currentTarget.dataset.app;
+        const data = appData[appId];
+        if (!data) return;
+
+        const template = document.getElementById('note-template');
+        const clone = document.importNode(template.content, true).children[0];
+        
+        clone.querySelector('.note-title').textContent = data.header;
+        clone.querySelector('h3').textContent = data.title;
+        clone.querySelector('p').textContent = data.text;
+
+        // Позиция: чуть выше середины экрана
+        const left = window.innerWidth / 2 - 160 + (Math.random() - 0.5) * 60;
+        const top = window.innerHeight / 2 - 120 + (Math.random() - 0.5) * 40;
+        clone.style.left = `${left}px`;
+        clone.style.top = `${top}px`;
+
+        document.body.appendChild(clone);
+
+        // Показать с анимацией
+        setTimeout(() => clone.classList.add('visible'), 10);
+
+        // Добавить drag & close
+        setupNoteWindow(clone);
+      });
+    });
+
+    // Настроить окно заметки (drag + close)
+    function setupNoteWindow(note) {
+      const header = note.querySelector('.note-header');
+      const closeBtn = note.querySelector('.dot.close');
+      const minBtn = note.querySelector('.dot.min');
+
+      let isDragging = false, offsetX, offsetY;
+
+      // Перетаскивание
+      header.addEventListener('mousedown', (e) => {
+        if (e.target.closest('.dot')) return; // не тащим за кнопки
+        isDragging = true;
+        note.style.zIndex = 95;
+        const rect = note.getBoundingClientRect();
+        offsetX = e.clientX - rect.left;
+        offsetY = e.clientY - rect.top;
+        note.classList.add('dragging');
+        e.preventDefault();
+      });
+
+      const move = (e) => {
+        if (!isDragging) return;
+        note.style.left = `${e.clientX - offsetX}px`;
+        note.style.top = `${e.clientY - offsetY}px`;
+      };
+
+      const stop = () => {
+        if (isDragging) {
+          isDragging = false;
+          note.classList.remove('dragging');
+        }
+      };
+
+      document.addEventListener('mousemove', move);
+      document.addEventListener('mouseup', stop);
+
+      // Закрытие по кнопкам
+      const closeNote = () => {
+        note.classList.remove('visible');
+        setTimeout(() => {
+          note.remove();
+          document.removeEventListener('mousemove', move);
+          document.removeEventListener('mouseup', stop);
+        }, 300);
+      };
+
+      closeBtn.addEventListener('click', closeNote);
+      minBtn.addEventListener('click', closeNote); // как ты просила — жёлтая тоже закрывает
+    }
+
+    // Смайлики (как раньше)
+    document.querySelectorAll('.smiley-spacer').forEach(spacer => {
+      spacer.addEventListener('click', (e) => {
+        const emoji = e.currentTarget.dataset.emoji || e.currentTarget.textContent.trim();
+        if (!emoji) return;
+
+        const el = document.createElement('div');
+        el.className = 'draggable-emoji';
+        el.textContent = emoji;
+
+        const left = window.innerWidth / 2 - 21;
+        const top = window.innerHeight / 2 - 21;
+        el.style.left = `${left}px`;
+        el.style.top = `${top}px`;
+
+        document.body.appendChild(el);
+        makeDraggable(el);
+      });
+    });
+
+    function makeDraggable(el) {
+      let isDragging = false, offsetX, offsetY;
+
+      el.addEventListener('mousedown', (e) => {
+        isDragging = true;
+        el.classList.add('dragging');
+        const rect = el.getBoundingClientRect();
+        offsetX = e.clientX - rect.left;
+        offsetY = e.clientY - rect.top;
+        e.preventDefault();
+      });
+
+      const move = (e) => {
+        if (!isDragging) return;
+        el.style.left = `${e.clientX - offsetX}px`;
+        el.style.top = `${e.clientY - offsetY}px`;
+      };
+
+      const stop = () => {
+        if (isDragging) {
+          isDragging = false;
+          el.classList.remove('dragging');
+        }
+      };
+
+      document.addEventListener('mousemove', move);
+      document.addEventListener('mouseup', stop);
+    }
+  </script>
+
+</body>
+</html>
